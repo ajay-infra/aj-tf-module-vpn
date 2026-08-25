@@ -8,7 +8,7 @@ Provisions AWS Client VPN with mutual TLS or AD authentication, split-tunnel rou
 
 ## Stable ref
 ```
-source = "github.com/ajaylakma/aj-tf-module-vpn?ref=vpn-01"
+source = "github.com/ajay-infra/aj-tf-module-vpn?ref=v1.0.0"
 ```
 
 ## Key inputs
@@ -23,14 +23,16 @@ source = "github.com/ajaylakma/aj-tf-module-vpn?ref=vpn-01"
 | `additional_routes` | Extra CIDRs to route (e.g. peered VPCs) |
 
 ## AWS tags applied
-`Env`, `Team`, `ManagedBy`, `CostCenter`, `Model`, `Customer`
+`Project`, `ManagedBy`, `Repository`, `Environment`, `Team`, `CostCenter` (set in
+`locals.full_tags`), plus whatever's in `var.tags`. No `Env`, `Model`, or `Customer`
+tag exists in this module.
 
 ## Depends on
 `aj-tf-module-directory` — for AD-based VPN auth (optional)
 
 ## Branching convention
 - `main` — active development
-- `vpn-01` — stable pinned release
+- semver tags (`v1.0.0`, ...) — stable pinned releases, per `README.md` usage examples
 
 ## CI checks
 fmt, validate, plan (dry-run), tfsec/checkov
