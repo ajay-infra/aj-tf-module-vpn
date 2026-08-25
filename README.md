@@ -92,7 +92,7 @@ EOF
 
 ```hcl
 module "vpn" {
-  source = "github.com/ajay-infra/aj-tf-module-vpn?ref=v0.1.0"
+  source = "github.com/ajay-infra/aj-tf-module-vpn?ref=v1.0.0"
 
   vpc_id            = module.vpc.vpc_id
   target_subnet_ids = module.vpc.private_subnet_ids
@@ -170,6 +170,6 @@ authorize_all_groups = false
 
 | Tool | Version |
 |---|---|
-| Terraform | `= 1.7.5` |
+| Terraform | `= 1.10.5` |
 | AWS provider | `= 5.100.0` |
 | TLS provider | `= 4.0.5` |
