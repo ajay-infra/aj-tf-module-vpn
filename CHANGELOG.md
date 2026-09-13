@@ -4,6 +4,15 @@ All notable changes to this module are documented here. Format loosely follows [
 
 ## [Unreleased]
 
+### Changed — `team` is required and must be a team code
+Breaking: `var.team` no longer defaults to `infra-core`; it must be
+`team-NNNN`, a row in `aj-infra/envs/org/teams.yaml`. Every consumer in the
+estate already passes one (`team = "team-0001"` in aj-infra's tfvars since
+2026-09-12), so nothing changes for them; a caller that forgot would have
+tagged resources — and labelled namespaces — with a slug nobody registered,
+which `require-product-code` now refuses at admission. Next tag is a major.
+
+
 ### Fixed
 - `README.md`'s "Provider pins" table said Terraform `= 1.7.5` — `providers.tf` actually pins `= 1.10.5`, matching the platform-wide Terraform 1.10.5 migration already reflected everywhere else. Same stale-version pattern already found and fixed in every other `aj-tf-module-*` repo touched this project.
 - `skills.md`'s "Stable ref" pointed at `github.com/ajaylakma/aj-tf-module-vpn?ref=vpn-01` — wrong org (real org is `ajay-infra`) and a branch that doesn't exist (only `main` — confirmed via `git branch -a`; no tags existed either, despite `README.md`'s own Usage example already correctly referencing `?ref=v0.1.0`, also nonexistent). Fixed both refs to `v1.0.0` and cut that tag (module was fully implemented with no prior release).
