@@ -49,12 +49,37 @@ resource "aws_ec2_client_vpn_endpoint" "main" {
     root_certificate_chain_arn = aws_acm_certificate.client_ca.arn
   }
 
-  # AD auth — layered on top of cert auth when directory_id is provided
+  # AD auth — layered on top of cert auth when directory_id is provided and
+  # SAML is not. Kept for the pre-SAML path; identity-and-access-v1.md §2
+  # demotes the directory and this is its last consumer.
   dynamic "authentication_options" {
-    for_each = var.directory_id != "" ? [1] : []
+    for_each = var.directory_id != "" && !local.saml_enabled ? [1] : []
     content {
       type                = "directory-service-authentication"
       active_directory_id = var.directory_id
+    }
+  }
+
+  # SAML — the engineer signs in through IAM Identity Center; the assertion's
+  # memberOf carries the estate's group names, which the authorization rules
+  # below key on. The AWS-provided client is required (it opens the browser).
+  dynamic "authentication_options" {
+    for_each = local.saml_enabled ? [1] : []
+    content {
+      type                           = "federated-authentication"
+      saml_provider_arn              = var.saml_provider_arn
+      self_service_saml_provider_arn = var.self_service_saml_provider_arn != "" ? var.self_service_saml_provider_arn : null
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = !(var.directory_id != "" && local.saml_enabled)
+      error_message = "directory_id and saml_provider_arn are both set. Client VPN takes one user-auth method beside mutual TLS; the estate's is SAML — drop directory_id."
+    }
+    precondition {
+      condition     = !(local.saml_enabled && length(var.groups) == 0)
+      error_message = "SAML is enabled but groups is empty — every authenticated user would reach every route. Pass the derived group list (scripts/vpn-groups.py)."
     }
   }
 
@@ -106,11 +131,14 @@ resource "aws_ec2_client_vpn_route" "additional" {
 }
 
 # ── Authorization Rules ───────────────────────────────────────────────────────
-# Control which connected clients can reach which CIDRs.
-# authorize_all_groups = true — any authenticated VPN user.
-# Restrict to AD groups (access_group_id) once AD groups are defined.
+# Two modes, never both:
+#   groups empty  → every authenticated user reaches every route (cert / AD)
+#   groups given  → one rule per (group, route) from group_rules; the group
+#                   name in the rule is the SAML memberOf value, verbatim
 
 resource "aws_ec2_client_vpn_authorization_rule" "management_vpc" {
+  count = local.per_group_rules ? 0 : 1
+
   client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.main.id
   target_network_cidr    = var.target_vpc_cidr
   authorize_all_groups   = true
@@ -118,10 +146,26 @@ resource "aws_ec2_client_vpn_authorization_rule" "management_vpc" {
 }
 
 resource "aws_ec2_client_vpn_authorization_rule" "additional" {
-  for_each = var.additional_routes
+  for_each = local.per_group_rules ? {} : var.additional_routes
 
   client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.main.id
   target_network_cidr    = each.value
   authorize_all_groups   = true
   description            = each.key
+}
+
+resource "aws_ec2_client_vpn_authorization_rule" "group" {
+  for_each = local.per_group_rules ? local.group_rule_pairs : {}
+
+  client_vpn_endpoint_id = aws_ec2_client_vpn_endpoint.main.id
+  target_network_cidr    = local.route_cidrs[each.value.route]
+  access_group_id        = each.value.group
+  description            = "${each.value.group} → ${each.value.route}"
+
+  lifecycle {
+    precondition {
+      condition     = contains(keys(local.route_cidrs), each.value.route)
+      error_message = "group_rules names route ${each.value.route}, which is neither \"management\" nor a key of additional_routes."
+    }
+  }
 }

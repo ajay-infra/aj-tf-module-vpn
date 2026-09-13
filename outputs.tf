@@ -79,3 +79,12 @@ output "client_ca_certificate_arn" {
   description = "ACM ARN of the client CA certificate."
   value       = aws_acm_certificate.client_ca.arn
 }
+
+output "authorization_mode" {
+  description = "per-group (SAML, rules keyed on memberOf) or all-groups (certificate / AD)."
+  value       = local.per_group_rules ? "per-group" : "all-groups"
+}
+
+output "group_rule_count" {
+  value = length(local.group_rule_pairs)
+}

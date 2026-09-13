@@ -11,6 +11,27 @@ locals {
     }
   }
 
+  # SAML and AD are alternatives — Client VPN accepts one user-auth method
+  # beside mutual TLS, and the estate's is SAML (groups in the assertion).
+  saml_enabled = var.saml_provider_arn != ""
+
+  # Group → tier → the routes that tier may reach → one authorization rule per
+  # (group, route). "management" is the endpoint's own VPC.
+  route_cidrs = merge({ management = var.target_vpc_cidr }, var.additional_routes)
+  group_tier = {
+    for g in var.groups : g => (
+      startswith(g, "estate-") ? "estate" : endswith(g, "-read") ? "team-read" : "team-write"
+    )
+  }
+  group_rule_pairs = {
+    for pair in flatten([
+      for g, tier in local.group_tier : [
+        for route in lookup(var.group_rules, tier, []) : { group = g, route = route }
+      ]
+    ]) : "${pair.group}--${pair.route}" => pair
+  }
+  per_group_rules = length(var.groups) > 0
+
   full_tags = merge({
     Project     = "aj-infra-platform"
     ManagedBy   = "Terraform"
