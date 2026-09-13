@@ -4,6 +4,18 @@ All notable changes to this module are documented here. Format loosely follows [
 
 ## [Unreleased]
 
+### Added — SAML authentication and per-group authorization (v2.1.0)
+- `saml_provider_arn` (+ `self_service_saml_provider_arn`): the endpoint
+  authenticates through IAM Identity Center; the assertion's `memberOf`
+  carries the estate's group names (identity-and-access-v1.md §7).
+  Mutually exclusive with `directory_id` — a precondition fails the plan if
+  both are set. The directory has no consumer once this is on.
+- `groups` (derived by the caller, validated against the §3 grammar) and
+  `group_rules` (tier → routes, in vpn.tfvars): one authorization rule per
+  (group, route), `access_group_id` = the group name. With `groups` empty
+  the old all-groups rules are created — SAML with no groups is refused.
+- Outputs `authorization_mode`, `group_rule_count`.
+
 ### Changed — `team` is required and must be a team code
 Breaking: `var.team` no longer defaults to `infra-core`; it must be
 `team-NNNN`, a row in `aj-infra/envs/org/teams.yaml`. Every consumer in the
