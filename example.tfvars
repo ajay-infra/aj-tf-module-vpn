@@ -33,5 +33,5 @@ cert_validity_hours = 87600
 # Connection logs retention
 log_retention_days = 30
 
-team        = "infra-core"
+team        = "team-0001"   # a team code — aj-infra/envs/org/teams.yaml
 cost_center = "infra-2026-q1"
